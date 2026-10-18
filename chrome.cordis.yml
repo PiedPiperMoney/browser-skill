@@ -1,0 +1,52 @@
+# Навык «Браузер»: два Chrome для DeepSeek Harness через chrome-devtools-mcp (Chrome 144+).
+#   mcp__chrome__*          — основной Chrome пользователя, его вкладки и входы (ws://127.0.0.1:__PORT__;
+#                             в Chrome включить chrome://inspect/#remote-debugging).
+#   mcp__chrome_sandbox__*  — отдельный Chrome с профилем __DSH__/chrome-profile, сервер запускает его сам.
+# Перед каждым сервером — visual-proxy.mjs (курсор и рамка на странице; --no-cursor перед «--» выключает).
+# Сторож опасных действий — хук PreToolUse (__DSH__/browser/hooks.json).
+# Шаблон: install.sh подставляет пути и вставляет блок в __DSH__/profiles/<профиль>/cordis.patch.yml.
+- insert:
+    - id: browser-chrome-main
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        serverName: chrome
+        transport: stdio
+        command: '__NODE__'
+        args:
+          - '__SERVER__/visual-proxy.mjs'
+          - '--'
+          - '__NODE__'
+          - '__SERVER__/node_modules/chrome-devtools-mcp/build/src/bin/chrome-devtools-mcp.js'
+          # Не --autoConnect: macOS не пускает сторонние программы в папку Chrome за DevToolsActivePort,
+          # а Chrome с галочкой в chrome://inspect/#remote-debugging принимает этот адрес напрямую.
+          - --wsEndpoint=ws://127.0.0.1:__PORT__/devtools/browser
+          - --no-usage-statistics
+          - --no-performance-crux
+          - --categoryEmulation=false
+          - --categoryPerformance=false
+          - --categoryNetwork=false
+          - --categoryMemory=false
+        toolCallTimeoutMs: 120000
+    - id: browser-chrome-sandbox
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        serverName: chrome_sandbox
+        transport: stdio
+        command: '__NODE__'
+        args:
+          - '__SERVER__/visual-proxy.mjs'
+          - '--'
+          - '__NODE__'
+          - '__SERVER__/node_modules/chrome-devtools-mcp/build/src/bin/chrome-devtools-mcp.js'
+          - '--userDataDir=__DSH__/chrome-profile'
+          - --no-usage-statistics
+          - --no-performance-crux
+          - --categoryEmulation=false
+          - --categoryPerformance=false
+          - --categoryNetwork=false
+          - --categoryMemory=false
+        toolCallTimeoutMs: 120000
+    - id: browser-guard-hooks
+      name: '@deepseek-ai/dsh-hooks-claude-code'
+      config:
+        configPath: '__DSH__/browser/hooks.json'
